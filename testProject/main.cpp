@@ -1,20 +1,33 @@
 #include "chatController.h"
+#include "messageController.h"
 #include "game.h"
 #include <stdio.h>
-#include <vector>
+#include <set>
 #include "main.h"
 
+#define START_COMAND "start"
+#define INITIALIZE_COMAND "initialize"
+#define STARTGAME_COMAND "startgame"
+#define JOIN_COMMAND "join"
+#define READY_COMMAND "ready"
 
-
-
-
+std::set<std::string> commandList({ 
+	START_COMAND,
+	INITIALIZE_COMAND,
+	STARTGAME_COMAND,
+	JOIN_COMMAND,
+	READY_COMMAND 
+});
 
 int main() {
+	auto commandList_ptr = std::make_shared <std::set<std::string>>(commandList);
+	//Define Filter Class with the list of commands
+	auto messageFilter_ptr = std::make_shared<MessageController::MessageFilter>(commandList_ptr);
 	TgBot::Bot bot("790754969:AAHIKutqHMILadsGqSLJKajpBJKwirekZB0");
-	bot.getEvents().onCommand("start", [&bot](TgBot::Message::Ptr message) {
+	bot.getEvents().onCommand(START_COMAND, [&bot](TgBot::Message::Ptr message) {
 		bot.getApi().sendMessage(message->chat->id, "Hi!");
 	});
-	bot.getEvents().onCommand("initialize", [&bot](TgBot::Message::Ptr message) {
+	bot.getEvents().onCommand(INITIALIZE_COMAND, [&bot](TgBot::Message::Ptr message) {
 		if (!ChatController::getCount(message->chat->id)) {
 			auto newChat = std::make_shared<ChatController::registeredChat_t>();
 			newChat->chat = message->chat;
@@ -27,7 +40,7 @@ int main() {
 		}
 
 	});
-	bot.getEvents().onCommand("startgame", [&bot](TgBot::Message::Ptr message) {
+	bot.getEvents().onCommand(STARTGAME_COMAND, [&bot](TgBot::Message::Ptr message) {
 		if (message->chat->id >= 0) {
 			bot.getApi().sendMessage(message->chat->id, "This is not a group chat");
 			return;
@@ -42,8 +55,13 @@ int main() {
 		bot.getApi().sendMessage(message->chat->id, "Chat not registered please type \\initialize command");
 		printf("Game not created in %d (not initialized)", message->chat->id);
 	});
-	bot.getEvents().onCommand("join", [&bot](TgBot::Message::Ptr message) {
+	bot.getEvents().onCommand(JOIN_COMMAND, [&bot](TgBot::Message::Ptr message) {
 		auto activeChat = ChatController::getActiveChat(message->chat->id);
+		if (activeChat == nullptr) {
+			bot.getApi().sendMessage(message->chat->id, "Chat not registered please type \\initialize command");
+			printf("Game not created in %d (not initialized)", message->chat->id);
+			return;
+		}
 		auto game = GameController::getGameFromChat(activeChat);
 		if (game != nullptr) {
 				GameController::addUserToGame(game, message->from);
@@ -52,7 +70,7 @@ int main() {
 		}
 		bot.getApi().sendMessage(message->chat->id, "Start a game to join");
 	});
-	bot.getEvents().onCommand("ready", [&bot](TgBot::Message::Ptr message) {
+	bot.getEvents().onCommand(READY_COMMAND, [&bot](TgBot::Message::Ptr message) {
 		auto activeChat = ChatController::getActiveChat(message->chat->id);
 		auto game = GameController::getGameFromChat(activeChat);
 		if (game != nullptr) {
@@ -61,29 +79,34 @@ int main() {
 			}
 		}
 	});
-	bot.getEvents().onAnyMessage([&bot](TgBot::Message::Ptr message) {
+	bot.getEvents().onAnyMessage([&bot,messageFilter_ptr](TgBot::Message::Ptr message) {
 		printf("User wrote %s\n", message->text.c_str());
-		if (StringTools::startsWith(message->text, "/start")) {
+		if (messageFilter_ptr->messageIsCommand(message))
 			return;
-		}
-		else if (StringTools::startsWith(message->text, "/initialize")) {
+		//if (ChatController::getCount(message->chat->id) && !message->from->isBot){
+		//	auto chatUsers = ChatController::getChatUsers(message->chat->id);
+		//	auto user = chatUsers.find(message->from);
+		//	if (user != chatUsers.end()) {
+		//		chatUsers.insert(message->from);
+		//	}
+		//	printf("User %s with %d added to chat %d", message->from->username, message->from->id, message->chat->id);
+		//	//Add recent users to it.
+		//}
+		//Check if chat is registered
+		auto avctiveChat = ChatController::getActiveChat(message->chat->id);
+		if (avctiveChat == nullptr)
 			return;
-		}
-		else if (StringTools::startsWith(message->text, "/join")) {
+		//Check if chat has game
+		auto game = GameController::getGameFromChat(avctiveChat);
+		if (game == nullptr)
 			return;
-		}
-		else if (StringTools::startsWith(message->text, "/ready")) {
+		//Check if it's message from a game
+		int playedNumber;
+		if (!messageFilter_ptr->messageIsFromGame(message, game, &playedNumber))
 			return;
-		}
-		if (ChatController::getCount(message->chat->id) && !message->from->isBot){
-			auto chatUsers = ChatController::getChatUsers(message->chat->id);
-			auto user = chatUsers.find(message->from);
-			if (user != chatUsers.end()) {
-				chatUsers.insert(message->from);
-			}
-			printf("User %s with %d added to chat %d", message->from->username, message->from->id, message->chat->id);
-			//Add recent users to it.
-		}
+		//Process Number for Game
+		GameController::processNumber(game, message->from, playedNumber, bot);
+		// Echo for debug
 		bot.getApi().sendMessage(message->chat->id, "Your message is: " + message->text);
 	});
 	try {

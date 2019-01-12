@@ -16,4 +16,5 @@ namespace ChatController {
 	std::size_t getCount(std::int64_t chatId);
 	std::set<TgBot::User::Ptr> getChatUsers(std::int64_t chatId);
 	registeredChat_ptr getActiveChat(std::int64_t chatId);
+	bool chatIsRegistered(std::int64_t chatId);
 }

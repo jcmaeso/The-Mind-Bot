@@ -65,11 +65,13 @@
     <ClCompile Include="chatController.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="messageController.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="chatController.h" />
     <ClInclude Include="game.h" />
     <ClInclude Include="main.h" />
+    <ClInclude Include="messageController.h" />
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

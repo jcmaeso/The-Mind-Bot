@@ -22,4 +22,10 @@ namespace ChatController {
 		}
 		return nullptr;
 	}
+	bool chatIsRegistered(std::int64_t chatId)
+	{
+		if (chatList.find(chatId) != chatList.end())
+			return true;
+		return false;
+	}
 }
