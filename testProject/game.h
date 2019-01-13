@@ -1,5 +1,6 @@
 #pragma once
 #include "chatController.h"
+#include <vector>
 #include <set>
 #include <map>
 
@@ -9,7 +10,7 @@ namespace GameController {
 		std::set<TgBot::User::Ptr> playingUsers;
 		std::vector<int> numberList;
 		std::vector<int> playedNumbers; //Numbers that aleready have been played
-		std::map < TgBot::User::Ptr, std::shared_ptr<std::set<int >>> playersNumbers; //Map with random numbers generated for each player
+		std::map < TgBot::User::Ptr, std::shared_ptr<std::vector<int >>> playersNumbers; //Map with random numbers generated for each player
 		int state;
 		int level;
 	}game_t;
@@ -33,12 +34,12 @@ namespace GameController {
 
 	class GameKeyboard {
 	public:
-		GameKeyboard(std::shared_ptr<std::set<int>> numbers);
+		GameKeyboard(std::shared_ptr<std::vector<int>> numbers);
 		TgBot::ReplyKeyboardMarkup::Ptr makeKeyboard();
-		std::shared_ptr<std::set<int>> getNumbers();
+		std::shared_ptr<std::vector<int>> getNumbers();
 	private:
 		int typeOfKeyboard;
-		std::shared_ptr<std::set<int>> numbers;
+		std::shared_ptr<std::vector<int>> numbers;
 		std::vector<std::vector<TgBot::KeyboardButton::Ptr>> buttons;
 		std::vector<TgBot::KeyboardButton::Ptr> createButtonfromInt(int number);
 		std::vector<TgBot::KeyboardButton::Ptr> createEmptyButton();

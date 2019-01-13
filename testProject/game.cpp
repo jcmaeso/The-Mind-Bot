@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <set>
+#include <unordered_set>
 #include <random>
 #include <stdexcept>
 #include <algorithm>
@@ -122,15 +123,18 @@ namespace GameController {
 		return nullptr;
 	}
 
-	std::shared_ptr<std::vector<std::shared_ptr<std::set<int>>>> randomNumberGenerator(int level, int numberOfPlayers) {
-		auto randomNumbers = randomNumberGenerator(numberOfPlayers*level);
-		auto randomNumbersSplitted = std::make_shared<std::vector<std::shared_ptr<std::set<int>>>>();
-		for (int i = 0; i < numberOfPlayers; i+=level) {
+	std::shared_ptr<std::vector<std::shared_ptr<std::vector<int>>>> randomNumberGenerator(int level, int numberOfPlayers) {
+		auto randomNumbersSet = randomNumberGenerator(numberOfPlayers*level);
+		//Shuffle vector
+		auto randomNumbers = std::make_shared<std::vector<int>>((*randomNumbersSet).begin(), (*randomNumbersSet).end());
+		std::random_shuffle((*randomNumbers).begin(), (*randomNumbers).end());
+		auto randomNumbersSplitted = std::make_shared<std::vector<std::shared_ptr<std::vector<int>>>>();
+		for (int i = 0; i < numberOfPlayers; i++) {
 			auto itBegin = (*randomNumbers).begin();
 			auto itEnd = (*randomNumbers).begin();
-			std::advance(itBegin, i);
-			std::advance(itEnd, i + level);
-			auto randomNumbersForPlayer = std::make_shared<std::set<int>>(itBegin, itEnd);
+			std::advance(itBegin, i*level);
+			std::advance(itEnd, i*level + level);
+			auto randomNumbersForPlayer = std::make_shared<std::vector<int>>(itBegin, itEnd);
 			(*randomNumbersSplitted).push_back(randomNumbersForPlayer);
 		}
 		return randomNumbersSplitted;
@@ -150,6 +154,7 @@ namespace GameController {
 	void launchNextLevel(game_ptr game, TgBot::Bot bot)
 	{
 		auto level = ++game->level;
+		game->playedNumbers.clear();
 		auto numberOfPlayers = static_cast<int>(game->playingUsers.size());
 		auto listOfPlayersNumbers = std::vector<std::shared_ptr<std::set<int>>>();
 		auto listOfPlayerKeyboard = std::vector<std::shared_ptr<GameKeyboard>>();
@@ -160,6 +165,8 @@ namespace GameController {
 			listOfPlayerKeyboard.push_back(std::make_shared<GameKeyboard>(randomNumbersForPlayer));
 		}
 		//Send all messages
+		std::string levelMsg = "Level " + std::to_string(level)+" started";
+		bot.getApi().sendMessage(game->activeChat->chat->id, levelMsg);
 		//TODO: SendKeyboardToPlayerFunction
 		for (auto player : game->playingUsers) {
 			//Add Numbers to the map
@@ -174,7 +181,7 @@ namespace GameController {
 
 	bool numberIsTheLowest(game_ptr game, int playedNumber, TgBot::User::Ptr resultUser) {
 		int min = MAX_NUMBER+1;
-		std::set<int>::iterator pos;
+		std::vector<int>::iterator pos;
 		TgBot::User::Ptr playerWithMinNumber;
 		//Fuga De memoria
 		game->playersNumbers.erase(0);
@@ -228,7 +235,8 @@ namespace GameController {
 			}
 			//GenerateNewKeyboard
 			std::string msgText = "Your new keyboard is ready [inline mention of a user](tg://user?id=" + std::to_string(user->id) + ")";
-			keyboard = std::make_shared<GameKeyboard>(game->playersNumbers[player]);
+			auto test = game->playersNumbers.find(getPlayingUserById(game,user))->second;
+			keyboard = std::make_shared<GameKeyboard>(test);
 			bot.getApi().sendMessage(game->activeChat->chat->id, msgText, false, 0, keyboard->makeKeyboard(), "Markdown");
 			return;
 		}	
@@ -236,7 +244,7 @@ namespace GameController {
 		endGame(game,bot);
 	}
 
-	GameKeyboard::GameKeyboard(std::shared_ptr<std::set<int>> numbers) {
+	GameKeyboard::GameKeyboard(std::shared_ptr<std::vector<int>> numbers) {
 		//Check if its empty to generate default keyboard
 		if (numbers->empty()) {
 			this->typeOfKeyboard = 0;
@@ -264,7 +272,7 @@ namespace GameController {
 		}
 		return replyKeyboard;
 	}
-	std::shared_ptr<std::set<int>> GameKeyboard::getNumbers()
+	std::shared_ptr<std::vector<int>> GameKeyboard::getNumbers()
 	{
 		return numbers;
 	}
